@@ -11,9 +11,7 @@ export async function handler(event: any) {
         "Acces-Control-Allow-Origin": true,
         "Acces-Control-Allow-Headers": true,
       },
-      body: JSON.stringify({
-        products: mockedProducts,
-      }),
+      body: JSON.stringify(mockedProducts),
     };
   } catch (err: any) {
     return {
@@ -24,8 +22,3 @@ export async function handler(event: any) {
     };
   }
 }
-
-/*
-    "@aws-cdk/aws-apigatewayv2-alpha": "^2.105.0-alpha.0",
-    "@aws-cdk/aws-apigatewayv2-integrations-alpha": "^2.105.0-alpha.0",
-*/
