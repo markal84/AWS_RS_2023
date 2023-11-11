@@ -2,6 +2,13 @@ import { mockedProducts } from "../data/products";
 
 export async function handler(event: any) {
   try {
+    if (mockedProducts.length === 0) {
+      return {
+        statusCode: 404,
+        body: JSON.stringify({ message: "Products not found" }),
+      };
+    }
+
     console.log(`working getProduct`, event);
 
     return {
