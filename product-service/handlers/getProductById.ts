@@ -1,12 +1,12 @@
 import { mockedProducts } from "../data/products";
 
-export async function handler(event: any) {
+export async function handler(event: any, product = mockedProducts) {
   try {
     const productId: string = event.pathParameters.productId;
 
-    const product = mockedProducts.find((p) => p.id === productId);
+    const productFound = product.find((p) => p.id === productId);
 
-    if (!product) {
+    if (!productFound) {
       return {
         statusCode: 404,
         body: JSON.stringify({ message: "Product not found" }),
@@ -20,7 +20,7 @@ export async function handler(event: any) {
         "Access-Control-Allow-Origin": true,
         "Access-Control-Allow-Headers": true,
       },
-      body: JSON.stringify(product),
+      body: JSON.stringify(productFound),
     };
   } catch (err: any) {
     return {
