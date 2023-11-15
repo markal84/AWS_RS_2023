@@ -1,10 +1,10 @@
 import { mockedProducts } from "../data/products";
 
-export async function handler(event: any, product = mockedProducts) {
+export async function handler(event: any) {
   try {
     const productId: string = event.pathParameters.productId;
 
-    const productFound = product.find((p) => p.id === productId);
+    const productFound = mockedProducts.find((p) => p.id === productId);
 
     if (!productFound) {
       return {

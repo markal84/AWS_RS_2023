@@ -1,13 +1,15 @@
 import { mockedProducts } from "../data/products";
 
-export async function handler(event: any, products = mockedProducts) {
+export async function handler(event: any) {
   try {
-    if (products.length === 0) {
+    if (mockedProducts.length === 0) {
       return {
         statusCode: 404,
         body: JSON.stringify({ message: "Products not found" }),
       };
     }
+
+    console.log("event returned: ", event);
 
     return {
       statusCode: 200,
@@ -16,7 +18,7 @@ export async function handler(event: any, products = mockedProducts) {
         "Acces-Control-Allow-Origin": true,
         "Acces-Control-Allow-Headers": true,
       },
-      body: JSON.stringify(products),
+      body: JSON.stringify(mockedProducts),
     };
   } catch (err: any) {
     return {
