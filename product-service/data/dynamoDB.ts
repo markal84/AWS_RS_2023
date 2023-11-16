@@ -1,53 +1,48 @@
 import { v4 as uuidv4 } from "uuid";
-import * as AWS from "aws-sdk";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
 type Product = {
-  id: string;
   title: string;
   description: string;
   price: number;
 };
 
-const id = uuidv4();
-
-const docClient = new AWS.DynamoDB.DocumentClient();
+const client = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(client);
 
 const products: Product[] = [
   {
-    id: id,
     title: "ProductOneDynamoDB",
     price: 24,
     description: "Short Product Description1",
   },
   {
-    id: id,
     title: "ProductTwoDynamoDB",
     price: 12,
     description: "Short Product Description2",
   },
   {
-    id: id,
     title: "ProductThreeDynamoDB",
     price: 36,
     description: "Short Product Description3",
   },
 ];
 
-// Funkcja do dodawania produktów
-async function addProductsToDynamoDB() {
-  try {
-    for (const product of products) {
-      const params = {
-        TableName: "products",
-        Item: product,
-      };
-      await docClient.put(params).promise();
-      console.log(`Dodano produkt o ID: ${product.id}`);
-    }
-  } catch (err) {
-    console.error("Błąd podczas dodawania produktów do DynamoDB:", err);
-  }
-}
+export const main = async () => {
+  for (const product of products) {
+    const id = uuidv4();
+    const command = new PutCommand({
+      TableName: "products",
+      Item: {
+        ...product,
+        id: id,
+      },
+    });
 
-// Wywołanie funkcji
-addProductsToDynamoDB();
+    await docClient.send(command);
+    console.log("product added: ", product);
+  }
+};
+
+main();
