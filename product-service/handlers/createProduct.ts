@@ -41,7 +41,7 @@ export async function handler(event: any) {
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: `Product created successfully: ${requestBody}`,
+        message: `Product created successfully`,
       }),
     };
   } catch (error: any) {
