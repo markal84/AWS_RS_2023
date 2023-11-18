@@ -13,9 +13,14 @@ const docClient = DynamoDBDocumentClient.from(client);
 
 export async function handler(event: any) {
   try {
-    console.log("Create product handler: ", event);
-
     const requestBody = JSON.parse(event.body || "{}") as Product;
+
+    console.log(
+      "Create product handler: \n",
+      event,
+      "\n Parameters (product): \n",
+      requestBody
+    );
 
     if (!requestBody.title || !requestBody.description) {
       return {
