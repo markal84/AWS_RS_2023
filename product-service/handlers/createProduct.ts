@@ -1,15 +1,18 @@
 import { v4 as uuidv4 } from "uuid";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { PutCommand, DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  TransactWriteCommand,
+} from "@aws-sdk/lib-dynamodb";
 
 type Product = {
   title: string;
   description: string;
   price: number;
+  count: number;
 };
 
 const client = new DynamoDBClient({});
-const docClient = DynamoDBDocumentClient.from(client);
 
 export async function handler(event: any) {
   try {
@@ -22,7 +25,9 @@ export async function handler(event: any) {
       requestBody
     );
 
-    if (!requestBody.title || !requestBody.description) {
+    const count = requestBody.count;
+
+    if (!requestBody.title || !requestBody.description || !count) {
       return {
         statusCode: 400,
         body: JSON.stringify({ message: "Missing required parameters" }),
@@ -32,16 +37,32 @@ export async function handler(event: any) {
     const id = uuidv4();
     const price = requestBody.price || 1;
 
-    const command = new PutCommand({
-      TableName: "products",
-      Item: {
-        ...requestBody,
-        price,
-        id: id,
+    const transactionItems = [
+      {
+        Put: {
+          TableName: "products",
+          Item: {
+            ...requestBody,
+            price,
+            id,
+          },
+        },
       },
-    });
+      {
+        Put: {
+          TableName: "stocks",
+          Item: {
+            product_id: id,
+            count,
+          },
+        },
+      },
+    ];
 
-    await docClient.send(command);
+    const transactionCommand = new TransactWriteCommand({
+      TransactItems: transactionItems,
+    });
+    await client.send(transactionCommand);
 
     return {
       statusCode: 200,
