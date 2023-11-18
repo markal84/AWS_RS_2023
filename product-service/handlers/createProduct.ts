@@ -16,6 +16,14 @@ export async function handler(event: any) {
     console.log("Create product handler: ", event);
 
     const requestBody = JSON.parse(event.body || "{}") as Product;
+
+    if (!requestBody.title || !requestBody.description) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ message: "Missing required parameters" }),
+      };
+    }
+
     const id = uuidv4();
     const price = requestBody.price || 1;
 
