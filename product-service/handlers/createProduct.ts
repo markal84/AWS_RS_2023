@@ -1,9 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import {
-  DynamoDBDocumentClient,
-  TransactWriteCommand,
-} from "@aws-sdk/lib-dynamodb";
+import { TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 
 type Product = {
   title: string;
@@ -27,10 +24,12 @@ export async function handler(event: any) {
 
     const count = requestBody.count;
 
-    if (!requestBody.title || !requestBody.description || !count) {
+    if (!requestBody.title || !count) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ message: "Missing required parameters" }),
+        body: JSON.stringify({
+          message: "Missing required parameters: title and count",
+        }),
       };
     }
 
