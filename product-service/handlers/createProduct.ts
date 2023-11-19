@@ -2,18 +2,11 @@ import { v4 as uuidv4 } from "uuid";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 
-type Product = {
-  title: string;
-  description: string;
-  price: number;
-  count: number;
-};
-
 const client = new DynamoDBClient({});
 
 export async function handler(event: any) {
   try {
-    const requestBody = JSON.parse(event.body || "{}") as Product;
+    const requestBody = JSON.parse(event.body);
 
     console.log(
       "Create product handler: \n",
@@ -35,15 +28,17 @@ export async function handler(event: any) {
 
     const id = uuidv4();
     const price = requestBody.price || 1;
+    const { title, description } = requestBody;
 
     const transactionItems = [
       {
         Put: {
           TableName: "products",
           Item: {
-            ...requestBody,
-            price,
             id,
+            title,
+            description,
+            price,
           },
         },
       },

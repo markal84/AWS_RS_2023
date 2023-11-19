@@ -32,7 +32,7 @@ export async function handler(event: any) {
     const getStockParams = {
       TableName: "stocks",
       Key: {
-        product_id: { S: productId },
+        product_id: productId,
       },
     };
 
@@ -46,7 +46,7 @@ export async function handler(event: any) {
 
     const productWithStock = {
       ...product,
-      count: stock?.count || 0,
+      count: stock?.count,
     };
 
     console.log("final product merged: ", productWithStock);
