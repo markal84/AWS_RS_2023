@@ -3,9 +3,9 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { buildResponse } from "../lib/utils";
 
-export const handler = async (
+export async function handler(
   event: APIGatewayProxyEvent
-): Promise<APIGatewayProxyResult> => {
+): Promise<APIGatewayProxyResult> {
   console.log("ImportService log: ", event);
 
   const fileName = event.queryStringParameters?.name;
@@ -38,4 +38,4 @@ export const handler = async (
       message: error.message,
     });
   }
-};
+}

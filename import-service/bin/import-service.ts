@@ -51,6 +51,20 @@ const importProductsFile = new NodejsFunction(
 
 uploadBucket.grantReadWrite(importProductsFile);
 
+const importFileParser = new NodejsFunction(stack, "ImportFileParserLambda", {
+  ...lambdaProps,
+  functionName: "importFileParser",
+  entry: "./handlers/importFileParser.ts",
+});
+
+uploadBucket.grantReadWrite(importFileParser);
+
+uploadBucket.addEventNotification(
+  s3.EventType.OBJECT_CREATED,
+  new s3n.LambdaDestination(importFileParser),
+  { prefix: "uploaded/" }
+);
+
 api.addRoutes({
   integration: new HttpLambdaIntegration(
     "ImportProductFileIntegration",
