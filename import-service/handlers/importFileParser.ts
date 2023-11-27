@@ -10,17 +10,21 @@ import csv from "csv-parser";
 import { buildResponse } from "../lib/utils";
 
 export async function handler(event: S3Event) {
+  const bucket = event.Records[0].s3.bucket.name;
+  const key = event.Records[0].s3.object.key;
+  const splitKey = key.split("/");
+  const fileName = splitKey[splitKey.length - 1];
+
+  console.log("bucket: ", bucket, "filePatch: ", key, "file name: ", fileName);
+
+  if (!key.startsWith("uploaded/")) {
+    console.log("Even must by starting in upload folder. Skipping");
+    return;
+  }
+
+  const client = new S3Client({ region: "eu-north-1" });
+
   try {
-    const bucket = event.Records[0].s3.bucket.name;
-    const key = event.Records[0].s3.object.key;
-
-    console.log("importFileParserLog: ", event);
-
-    if (!key.startsWith("uploaded/")) {
-      console.log("Even must by starting in upload folder. Skipping");
-      return;
-    }
-
     const params = {
       Bucket: bucket,
       Key: key,
@@ -28,19 +32,15 @@ export async function handler(event: S3Event) {
 
     const copyParams = {
       ...params,
-      Key: `parsed/${key}`,
+      Key: `parsed/${fileName}`,
       CopySource: `${bucket}/${key}`,
     };
-
-    const client = new S3Client({ region: "eu-north-1" });
 
     const getObjectCommand = new GetObjectCommand(params);
 
     const copyObjectCommand = new CopyObjectCommand(copyParams);
-    //const copyFile = await client.send(copyObjectCommand);
 
     const deleteObjectCommand = new DeleteObjectCommand(params);
-    //const deleteFile = await client.send(deleteObjectCommand);
 
     const { Body } = await client.send(getObjectCommand);
 
@@ -50,18 +50,31 @@ export async function handler(event: S3Event) {
 
     const stream = Body as Readable;
 
-    stream
-      .pipe(csv())
-      .on("data", (row) => {
-        console.log("CSV file Row:", row);
-      })
-      .on("end", () => {
-        console.log("CSV file parsing finished");
-      })
-      .on("error", (error) => {
-        console.error("CSV file Parsing Error:", error);
-        throw new Error("CSV Parsing Error");
-      });
+    const streamEnd = new Promise((resolve, reject) => {
+      stream
+        .pipe(csv())
+        .on("data", (record) => {
+          console.log("CSV file Row:", record);
+        })
+        .on("end", async () => {
+          console.log("CSV file parsing finished");
+          try {
+            await client.send(copyObjectCommand);
+            console.log("Moving parsed file to parsed folder");
+            await client.send(deleteObjectCommand);
+            console.log("Deleting file from uploaded folder");
+            resolve(null);
+          } catch (err) {
+            reject(err);
+          }
+        })
+        .on("error", (error) => {
+          console.error("CSV file Parsing Error:", error);
+          reject(error);
+        });
+    });
+
+    await streamEnd;
 
     return buildResponse(200, {
       message: "Parsed successful",

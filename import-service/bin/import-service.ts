@@ -75,6 +75,6 @@ api.addRoutes({
 });
 
 new cdk.CfnOutput(stack, "Import service Url", {
-  value: `${api.url}/import`,
+  value: `${api.url}import`,
   description: `Import service API URL`,
 });

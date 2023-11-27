@@ -9,7 +9,6 @@ export async function handler(
   console.log("ImportService log: ", event);
 
   const fileName = event.queryStringParameters?.name;
-  console.log("file name parameter: ", fileName);
 
   const bucket = "uploadproducts";
 
@@ -31,7 +30,6 @@ export async function handler(
   try {
     await client.send(putCommand);
     const signedUrl = await getSignedUrl(client, putCommand, { expiresIn: 60 });
-    console.log(signedUrl);
     return buildResponse(200, signedUrl);
   } catch (error: any) {
     return buildResponse(500, {
