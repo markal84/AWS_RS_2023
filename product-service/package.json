@@ -12,7 +12,9 @@
   },
   "devDependencies": {
     "@types/jest": "^29.5.5",
+    "@types/lodash": "^4.14.201",
     "@types/node": "20.7.1",
+    "@types/uuid": "^9.0.7",
     "aws-core": "^1.0.0",
     "cdk": "^2.104.0",
     "constructs": "^10.3.0",
@@ -27,8 +29,13 @@
     "@aws-cdk/aws-apigatewayv2-alpha": "^2.105.0-alpha.0",
     "@aws-cdk/aws-apigatewayv2-integrations": "^1.204.0",
     "@aws-cdk/aws-apigatewayv2-integrations-alpha": "^2.105.0-alpha.0",
+    "@aws-sdk/client-dynamodb": "^3.451.0",
+    "@aws-sdk/lib-dynamodb": "^3.451.0",
     "aws-cdk-lib": "^2.104.0",
+    "aws-sdk": "^2.1497.0",
     "constructs": "^10.0.0",
-    "source-map-support": "^0.5.21"
+    "lodash": "^4.17.21",
+    "source-map-support": "^0.5.21",
+    "uuid": "^9.0.1"
   }
 }
