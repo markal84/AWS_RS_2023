@@ -6,7 +6,14 @@ const client = new DynamoDBClient({});
 
 export async function handler(event: any) {
   try {
-    const requestBody = JSON.parse(event.body);
+    type productToCreate = {
+      price: number;
+      title: string;
+      description: string;
+      count: number;
+    };
+
+    const requestBody: productToCreate = JSON.parse(event.body);
 
     console.log(
       "Create product handler: \n",
@@ -15,20 +22,18 @@ export async function handler(event: any) {
       requestBody
     );
 
-    const count = requestBody.count;
+    const id = uuidv4();
+    const price = requestBody.price || 1;
+    const { title, description, count } = requestBody;
 
-    if (!requestBody.title || !count) {
+    if (isNaN(price) || isNaN(count) || count < 0 || price <= 0) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          message: "Missing required parameters: title and count",
+          message: "Count and price must be number and be grater than 0",
         }),
       };
     }
-
-    const id = uuidv4();
-    const price = requestBody.price || 1;
-    const { title, description } = requestBody;
 
     const transactionItems = [
       {
