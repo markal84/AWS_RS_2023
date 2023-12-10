@@ -10,6 +10,7 @@ import {
   NodejsFunctionProps,
 } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import { YOUR_EMAIL } from "./data/libs/constants";
 
 const app = new cdk.App();
 
@@ -40,7 +41,7 @@ const importProductTopic = new sns.Topic(stack, "ImortProductTopic", {
 });
 
 new sns.Subscription(stack, "BigStockSubcription", {
-  endpoint: "kalet1984@gmail.com",
+  endpoint: YOUR_EMAIL, //set your email in constants.ts
   protocol: sns.SubscriptionProtocol.EMAIL,
   topic: importProductTopic,
 });
