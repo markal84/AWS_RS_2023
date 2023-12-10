@@ -3,6 +3,7 @@ import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as s3n from "aws-cdk-lib/aws-s3-notifications";
+import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import {
   NodejsFunction,
@@ -23,11 +24,18 @@ const uploadBucket = s3.Bucket.fromBucketName(
   "uploadproducts"
 );
 
+const queue = sqs.Queue.fromQueueArn(
+  stack,
+  "importFileQueue",
+  "arn:aws:sqs:eu-north-1:298531520651:import-file-batch-queue"
+);
+
 const lambdaProps: Partial<NodejsFunctionProps> = {
   runtime: lambda.Runtime.NODEJS_18_X,
   environment: {
     PRODUCT_AWS_REGION: "eu-north-1",
     BUCKET_NAME: "uploadproducts",
+    SQS_URL: queue.queueUrl,
   },
 };
 
@@ -58,6 +66,8 @@ const importFileParser = new NodejsFunction(stack, "ImportFileParserLambda", {
 });
 
 uploadBucket.grantReadWrite(importFileParser);
+uploadBucket.grantDelete(importFileParser);
+queue.grantSendMessages(importFileParser);
 
 uploadBucket.addEventNotification(
   s3.EventType.OBJECT_CREATED,
