@@ -14,9 +14,17 @@ export async function handler(event: SQSEvent): Promise<APIGatewayProxyResult> {
       region: "eu-north-1",
     });
 
+    const processedTitles: Set<string> = new Set();
+
     for (const record of records) {
       console.log("record: ", record);
       const { description, title, price, count } = JSON.parse(record.body);
+
+      if (processedTitles.has(title)) {
+        console.log(`Skipping duplicate product title: ${title}`);
+        continue;
+      }
+
       const id = uuidv4();
       const product = { id, description, title, price: Number(price) };
       const stock = { product_id: id, count: Number(count) };
@@ -24,18 +32,13 @@ export async function handler(event: SQSEvent): Promise<APIGatewayProxyResult> {
       console.log({ newProduct });
 
       const result = await createProduct(record);
-      console.log({ result });
 
       await snsClient.send(
         new PublishCommand({
           Subject: "New Products Added to Catalog",
           TopicArn: "arn:aws:sns:eu-north-1:298531520651:import-products-topic",
           Message: JSON.stringify({
-            id: id,
-            description: description,
-            title: title,
-            price: price,
-            count: count,
+            result,
           }),
         })
       );
