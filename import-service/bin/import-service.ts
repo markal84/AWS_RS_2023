@@ -10,7 +10,15 @@ import {
   NodejsFunctionProps,
 } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apiGateway from "@aws-cdk/aws-apigatewayv2-alpha";
+import { TokenAuthorizer } from "aws-cdk-lib/aws-apigateway";
+import { PolicyDocument, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import { aws_iam } from "aws-cdk-lib";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
+import { config } from "dotenv";
+
+config();
+
+const { AUTH_LAMBDA_ARN } = process.env;
 
 const app = new cdk.App();
 
@@ -29,6 +37,41 @@ const queue = sqs.Queue.fromQueueArn(
   "importFileQueue",
   "arn:aws:sqs:eu-north-1:298531520651:import-file-batch-queue"
 );
+
+const authLambda = lambda.Function.fromFunctionArn(
+  stack,
+  "BasicAuthorizerLambda",
+  AUTH_LAMBDA_ARN!
+);
+
+const authRole = new Role(stack, "authorizerRole", {
+  roleName: "authorizer-role",
+  assumedBy: new ServicePrincipal("apigateway.amazonaws.com"),
+  inlinePolicies: {
+    allowLambdaInvocation: PolicyDocument.fromJson({
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Effect: "Allow",
+          Action: ["lambda:InvokeFunction", "lambda:InvokeAsync"],
+          Resource: AUTH_LAMBDA_ARN!,
+        },
+      ],
+    }),
+  },
+});
+
+const authorizer = new TokenAuthorizer(stack, "basicAuthorizer", {
+  handler: authLambda,
+  authorizerName: "ImportAuthorizer",
+  resultsCacheTtl: cdk.Duration.seconds(0),
+  assumeRole: authRole,
+});
+
+authLambda.addPermission("apigateway", {
+  principal: new aws_iam.ServicePrincipal("apigateway.amazonaws.com"),
+  sourceArn: authorizer.authorizerArn,
+});
 
 const lambdaProps: Partial<NodejsFunctionProps> = {
   runtime: lambda.Runtime.NODEJS_18_X,
