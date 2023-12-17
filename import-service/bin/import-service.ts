@@ -10,7 +10,7 @@ import {
   NodejsFunctionProps,
 } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apiGateway from "@aws-cdk/aws-apigatewayv2-alpha";
-import { TokenAuthorizer } from "aws-cdk-lib/aws-apigateway";
+import * as apiGatewayv2 from "aws-cdk-lib/aws-apigateway";
 import { PolicyDocument, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { aws_iam } from "aws-cdk-lib";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
@@ -38,41 +38,6 @@ const queue = sqs.Queue.fromQueueArn(
   "arn:aws:sqs:eu-north-1:298531520651:import-file-batch-queue"
 );
 
-const authLambda = lambda.Function.fromFunctionArn(
-  stack,
-  "BasicAuthorizerLambda",
-  AUTH_LAMBDA_ARN!
-);
-
-const authRole = new Role(stack, "authorizerRole", {
-  roleName: "authorizer-role",
-  assumedBy: new ServicePrincipal("apigateway.amazonaws.com"),
-  inlinePolicies: {
-    allowLambdaInvocation: PolicyDocument.fromJson({
-      Version: "2012-10-17",
-      Statement: [
-        {
-          Effect: "Allow",
-          Action: ["lambda:InvokeFunction", "lambda:InvokeAsync"],
-          Resource: AUTH_LAMBDA_ARN!,
-        },
-      ],
-    }),
-  },
-});
-
-const authorizer = new TokenAuthorizer(stack, "basicAuthorizer", {
-  handler: authLambda,
-  authorizerName: "ImportAuthorizer",
-  resultsCacheTtl: cdk.Duration.seconds(0),
-  assumeRole: authRole,
-});
-
-authLambda.addPermission("apigateway", {
-  principal: new aws_iam.ServicePrincipal("apigateway.amazonaws.com"),
-  sourceArn: authorizer.authorizerArn,
-});
-
 const lambdaProps: Partial<NodejsFunctionProps> = {
   runtime: lambda.Runtime.NODEJS_18_X,
   environment: {
@@ -81,14 +46,6 @@ const lambdaProps: Partial<NodejsFunctionProps> = {
     SQS_URL: queue.queueUrl,
   },
 };
-
-const api = new apiGateway.HttpApi(stack, "ImportApi", {
-  corsPreflight: {
-    allowHeaders: ["*"],
-    allowOrigins: ["*"],
-    allowMethods: [apiGateway.CorsHttpMethod.ANY],
-  },
-});
 
 const importProductsFile = new NodejsFunction(
   stack,
@@ -108,6 +65,27 @@ const importFileParser = new NodejsFunction(stack, "ImportFileParserLambda", {
   entry: "./handlers/importFileParser.ts",
 });
 
+const basicAuthorizer = lambda.Function.fromFunctionArn(
+  stack,
+  "basicAuthorizer",
+  AUTH_LAMBDA_ARN!
+);
+
+const authorizer = new apiGatewayv2.TokenAuthorizer(
+  stack,
+  "ImportServiceAuthorizer",
+  {
+    handler: basicAuthorizer,
+  }
+);
+
+new lambda.CfnPermission(stack, "BasicAuthorizerInvoke Permissions", {
+  action: "lambda:InvokeFunction",
+  functionName: basicAuthorizer.functionName,
+  principal: "apigateway.amazonaws.com",
+  sourceArn: authorizer.authorizerArn,
+});
+
 uploadBucket.grantReadWrite(importFileParser);
 uploadBucket.grantDelete(importFileParser);
 queue.grantSendMessages(importFileParser);
@@ -118,6 +96,7 @@ uploadBucket.addEventNotification(
   { prefix: "uploaded/" }
 );
 
+/*
 api.addRoutes({
   integration: new HttpLambdaIntegration(
     "ImportProductFileIntegration",
@@ -126,8 +105,38 @@ api.addRoutes({
   path: "/import",
   methods: [apiGateway.HttpMethod.GET],
 });
+*/
+
+const api = new apiGatewayv2.RestApi(stack, "ImportApi", {
+  defaultCorsPreflightOptions: {
+    allowHeaders: ["*"],
+    allowOrigins: apiGatewayv2.Cors.ALL_ORIGINS,
+    allowMethods: apiGatewayv2.Cors.ALL_METHODS,
+  },
+});
+
+api.root
+  .addResource("ImportProductFileIntegration")
+  .addMethod("GET", new apiGatewayv2.LambdaIntegration(importProductsFile), {
+    requestParameters: { "method.request.querystring.name": true },
+    authorizer,
+  });
+
+api.addGatewayResponse("GatewayResponseUnauthorized", {
+  type: apiGatewayv2.ResponseType.UNAUTHORIZED,
+  responseHeaders: {
+    "Access-Control-Allow-Origin": "'*'",
+    "Access-Control-Allow-Headers": "'*'",
+    "Access-Control-Allow-Methods": "'GET,POST,PUT,DELETE'",
+    "Access-Control-Allow-Credentials": "'true'",
+  },
+});
 
 new cdk.CfnOutput(stack, "Import service Url", {
   value: `${api.url}import`,
   description: `Import service API URL`,
+});
+
+new cdk.CfnOutput(stack, "AuthorizerArn", {
+  value: authorizer.authorizerArn,
 });
