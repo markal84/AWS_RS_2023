@@ -11,9 +11,6 @@ import {
 } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apiGateway from "@aws-cdk/aws-apigatewayv2-alpha";
 import * as apiGatewayv2 from "aws-cdk-lib/aws-apigateway";
-import { PolicyDocument, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
-import { aws_iam } from "aws-cdk-lib";
-import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import { config } from "dotenv";
 
 config();
@@ -95,17 +92,6 @@ uploadBucket.addEventNotification(
   new s3n.LambdaDestination(importFileParser),
   { prefix: "uploaded/" }
 );
-
-/*
-api.addRoutes({
-  integration: new HttpLambdaIntegration(
-    "ImportProductFileIntegration",
-    importProductsFile
-  ),
-  path: "/import",
-  methods: [apiGateway.HttpMethod.GET],
-});
-*/
 
 const api = new apiGatewayv2.RestApi(stack, "ImportApi", {
   defaultCorsPreflightOptions: {
