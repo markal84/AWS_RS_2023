@@ -5,7 +5,8 @@ import {
   GetObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { Readable } from "stream";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { Readable, PassThrough } from "stream";
 import csv from "csv-parser";
 import { buildResponse } from "../lib/utils";
 
@@ -23,6 +24,7 @@ export async function handler(event: S3Event) {
   }
 
   const client = new S3Client({ region: "eu-north-1" });
+  const sqsClient = new SQSClient({ region: "eu-north-1" });
 
   try {
     const params = {
@@ -42,20 +44,38 @@ export async function handler(event: S3Event) {
 
     const deleteObjectCommand = new DeleteObjectCommand(params);
 
-    const { Body } = await client.send(getObjectCommand);
+    const file = await client.send(getObjectCommand);
+    console.log({ file });
+    const readStream = file.Body;
 
-    if (!Body) {
-      throw new Error("No object data found");
+    if (!(readStream instanceof Readable)) {
+      throw new Error("Failed to read file");
     }
 
-    const stream = Body as Readable;
-
-    const streamEnd = new Promise((resolve, reject) => {
+    await new Promise((resolve, reject) => {
+      const stream = readStream.pipe(new PassThrough());
       stream
         .pipe(csv())
-        .on("data", (record) => {
-          console.log("CSV file Row:", record);
+        .on("data", async (data) => {
+          stream.pause();
+          try {
+            console.log("Send message to SQS", data);
+
+            await sqsClient.send(
+              new SendMessageCommand({
+                QueueUrl:
+                  "https://sqs.eu-north-1.amazonaws.com/298531520651/import-file-batch-queue",
+                MessageBody: JSON.stringify(data),
+              })
+            );
+          } catch (err) {
+            console.log("can't send sqs messages->", data);
+            reject(err);
+          }
+
+          stream.resume();
         })
+        .on("error", reject)
         .on("end", async () => {
           console.log("CSV file parsing finished");
           try {
@@ -73,8 +93,6 @@ export async function handler(event: S3Event) {
           reject(error);
         });
     });
-
-    await streamEnd;
 
     return buildResponse(200, {
       message: "Parsed successful",
